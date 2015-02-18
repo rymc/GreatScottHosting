@@ -1,4 +1,4 @@
-# Content Hosting System
+# Content Hosting Manager
 
 ### Libs using
 - [resify](http://mcavage.me/node-restify/)
