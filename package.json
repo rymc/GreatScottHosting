@@ -1,0 +1,16 @@
+{
+  "name": "matrix.ac",
+  "version": "0.0.0",
+  "description": "Content Hosting System",
+  "main": "main.js",
+  "dependencies": {
+    "restify": "~2.8.5",
+    "nedb": "~1.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT"
+}
