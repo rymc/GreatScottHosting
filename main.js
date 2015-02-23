@@ -1,29 +1,48 @@
-var restify = require('restify');
+var restify = require('restify')
+    , Datastore = require('nedb')
+    , db = new Datastore({ filename: 'data/users.nedb', autoload: true });
 
-var Datastore = require('nedb')
-  , db = new Datastore({ filename: 'data/users.nedb', autoload: true });
-
-function respond(req, res, next) {
-  res.send('hello ' + req.params.name + ' aged ' + req.params.age);
-  db.insert(req.params, function (err, newDoc) { console.log(newDoc); });
-  res.send('Inserted');
-  next();
-}
-
-function list(req, res, next) {
-  db.find({ }, function (err, docs) {
-  	console.log(docs);
+// Register an account
+function register_account(req, res, next) {
+  // Check email is free
+  db.find({ email: req.params.email }, function (err, docs) { // TODO: Replace with count function.
+    if(docs.length != 0) { 
+      res.send('You have an account.');
+      // Create an activation_key 
+    } else {
+      res.send('Creating new account.');
+      db.insert(req.params, function (err, newDoc) { console.log(newDoc); });
+      // Check for public GPG Key
+      // Send verification email
+    }
   });
-  res.send('Listed');
   next();
 }
+
+// Account Activation
+function activate_account(req, res, next) {
+  // confirm verification ID from email
+  db.find({ activation_key: req.params.activation_key }, function (err, docs) { // TODO: Replace with count function.
+    if(docs.length == 1) { 
+      res.send('Activating account: ' + docs.email);
+    } else {
+      res.send('Account not found.');
+    }
+    // Check for public GPG Key
+    // Send verification email
+  });
+  // Configure User space
+  next();
+}
+
 
 var server = restify.createServer();
-server.get('/hello/:name/:age/:email', respond);
-server.head('/hello/:name/:age/:email', respond);
 
-server.get('/list', list);
-server.head('/list', list);
+server.get('/register/:email', register_account);
+server.head('/register/:email', register_account);
+
+server.get('/activate/:activation_key', activate_account);
+server.head('/activate/:activation_key', activate_account);
 
 server.listen(8080, function() {
   console.log('%s listening at %s', server.name, server.url);
