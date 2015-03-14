@@ -1,37 +1,69 @@
 var restify = require('restify')
     , Datastore = require('nedb')
-    , db = new Datastore({ filename: 'data/users.nedb', autoload: true });
+    , db = new Datastore({ filename: 'data/users.nedb', autoload: true })
+    , winston = require('winston')
+    , crypto = require('crypto');
 
-// Register an account
+// Setup logging.
+var log = new (winston.Logger)({
+  transports: [
+    new (winston.transports.Console)({ level: 'debug' }),
+    new (winston.transports.File)({ filename: 'log.log', level: 'debug' })
+  ]
+});
+
+// Configure the database.
+db.ensureIndex({ fieldName: 'email', unique: true }, function (err) {
+  if(err){
+    log.error("ensureIndex: %j", err );
+  }
+});
+
 function register_account(req, res, next) {
-  // Check email is free
-  db.find({ email: req.params.email }, function (err, docs) { // TODO: Replace with count function.
-    if(docs.length != 0) { 
-      res.send('You have an account.');
-      // Create an activation_key 
-    } else {
-      res.send('Creating new account.');
-      db.insert(req.params, function (err, newDoc) { console.log(newDoc); });
-      // Check for public GPG Key
-      // Send verification email
+  // TODO: Maybe should check email exists before doing this, thought its sitll caught by the DBs index.
+  var d = crypto.createHash('sha1'); // TODO: Make sure this is 'random'
+  var insert_data = {};
+  // TODO: Check correct email 
+  insert_data['email'] = req.params.email;
+  insert_data['activation_key'] = d.digest('hex');
+
+  db.insert(insert_data, function (err, data) {
+    if(err && err.errorType == "uniqueViolated")
+    {
+      log.verbose("Attempted to create an existing account: '%s'.", req.params.email);
+      res.status(400);
+      res.send('This email address has been registered.');
+    }else if(err){
+      res.status(500);
+      log.error("register_account.insert(): ", err);
+      res.send('There has been a problem.');
+    }else if(!err && data){
+      res.status(201);
+      log.info("Account '%s' created.", data.email);
+      res.send('Acount created, check your inbox.');
     }
   });
+
+  // TODO: Check for public GPG Key
+  // TODO: Send verification email
+
   next();
 }
 
-// Account Activation
 function activate_account(req, res, next) {
-  // confirm verification ID from email
-  db.find({ activation_key: req.params.activation_key }, function (err, docs) { // TODO: Replace with count function.
-    if(docs.length == 1) { 
-      res.send('Activating account: ' + docs.email);
-    } else {
-      res.send('Account not found.');
+  db.update({ activation_key: req.params.activation_key }, { $unset: { activation_key: true } }, {}, function (err, numReplaced, newDoc) {
+    if(numReplaced != 1){
+        res.status(500);
+        res.send('Unable to activate account.');
+    }else if(err){
+      log.error("activate_account.update(): ", err);
+      res.send('Unable to activate account.');
+    }else{
+      // TODO: Configure User space
+      log.info('User verified email.');
+      res.send('Account activated.');
     }
-    // Check for public GPG Key
-    // Send verification email
   });
-  // Configure User space
   next();
 }
 
@@ -45,7 +77,7 @@ server.get('/activate/:activation_key', activate_account);
 server.head('/activate/:activation_key', activate_account);
 
 server.listen(8080, function() {
-  console.log('%s listening at %s', server.name, server.url);
+  log.info('Server started on %s', server.url);
 });
 
 // Functions to parse-user input.
@@ -61,3 +93,4 @@ server.listen(8080, function() {
 
 // Add SSH Public Key
 
+// TODO: Handle signals.
