@@ -15,7 +15,7 @@ var log = new (winston.Logger)({
 // Configure the database.
 db.ensureIndex({ fieldName: 'email', unique: true }, function (err) {
   if(err){
-    log.error("ensureIndex: %j", err );
+    log.error("ensureIndex: %j", err )
   }
 });
 
@@ -54,12 +54,14 @@ function activate_account(req, res, next) {
   db.update({ activation_key: req.params.activation_key }, { $unset: { activation_key: true } }, {}, function (err, numReplaced, newDoc) {
     if(numReplaced != 1){
         res.status(500);
+        log.verbose("Unable to activate account with ID: '%s'.", req.params.activation_key);
         res.send('Unable to activate account.');
     }else if(err){
+      res.status(500);
       log.error("activate_account.update(): ", err);
       res.send('Unable to activate account.');
     }else{
-      // TODO: Configure User space
+      // TODO: Run userspace bash script.
       log.info('User verified email.');
       res.send('Account activated.');
     }
