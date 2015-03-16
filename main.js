@@ -2,7 +2,8 @@ var restify = require('restify')
     , Datastore = require('nedb')
     , db = new Datastore({ filename: 'data/users.nedb', autoload: true })
     , winston = require('winston')
-    , crypto = require('crypto');
+    , crypto = require('crypto')
+    , swot = require('swot-simple');
 
 // Setup logging.
 var log = new (winston.Logger)({
@@ -23,8 +24,13 @@ function register_account(req, res, next) {
   // TODO: Maybe should check email exists before doing this, thought its sitll caught by the DBs index.
   var d = crypto.createHash('sha1'); // TODO: Make sure this is 'random'
   var insert_data = {};
-  // TODO: Check correct email 
   insert_data['email'] = req.params.email;
+
+  if(!swot.isAcademic(insert_data['email'])){
+    log.error("email address invalid '%s'.", insert_data['email']);
+    return next(new restify.InvalidArgumentError('Your email address is invalid. Is this an academic email address?'));
+  }
+
   insert_data['activation_key'] = d.digest('hex');
 
   db.insert(insert_data, function (err, data) {
@@ -32,7 +38,7 @@ function register_account(req, res, next) {
     {
       res.status(400);
       log.verbose("Attempted to create an existing account: '%s'.", req.params.email);
-      res.send('This email address has been registered.');
+      res.send('This email address has already been registered.');
     }else if(err){
       res.status(500);
       log.error("register_account.insert(): ", err);
