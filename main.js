@@ -30,8 +30,8 @@ function register_account(req, res, next) {
   db.insert(insert_data, function (err, data) {
     if(err && err.errorType == "uniqueViolated")
     {
-      log.verbose("Attempted to create an existing account: '%s'.", req.params.email);
       res.status(400);
+      log.verbose("Attempted to create an existing account: '%s'.", req.params.email);
       res.send('This email address has been registered.');
     }else if(err){
       res.status(500);
@@ -62,6 +62,7 @@ function activate_account(req, res, next) {
       res.send('Unable to activate account.');
     }else{
       // TODO: Run userspace bash script.
+      res.status(201);
       log.info('User verified email.');
       res.send('Account activated.');
     }
