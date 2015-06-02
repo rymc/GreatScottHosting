@@ -1,5 +1,7 @@
 # Content Hosting Manager
 
+[![Build Status](https://travis-ci.org/matrix-ac/GreatScottHosting.svg?branch=master)](https://travis-ci.org/matrix-ac/GreatScottHosting)
+
 ### Libs using
 - [resify](http://mcavage.me/node-restify/)
 - [nedb](https://github.com/louischatriot/nedb)

@@ -11,7 +11,7 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo hi"
+    "test": "echo 'TODO: Testing' && exit 0"
   },
   "author": "",
   "license": "GNU GPL v2"
