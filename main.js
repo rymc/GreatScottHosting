@@ -8,7 +8,7 @@ var restify = require('restify'),
     crypto = require('crypto'),
     swot = require('swot-simple'),
     fs = require('fs'),
-    child_process = require('child_process'),
+    child_process = require('child_process');
 
 
 
@@ -72,8 +72,9 @@ function register_account(req, res, next) {
 
     insert_data['pubkey'] = req.body.pubkey;
 
-    var d = crypto.createHash('sha1'); // TODO: Make this random.
-    insert_data['activation_key'] = d.digest('hex');
+    //var d = crypto.createHash('sha1'); // TODO: Make this random.
+    //insert_data['activation_key'] = d.digest('hex');
+    insert_data['activation_key'] = crypto.randomBytes(25).toString('hex');
 
     db.insert(insert_data, function(err, data) {
         if (err && err.errorType == "uniqueViolated") {
