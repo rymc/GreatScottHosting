@@ -28,6 +28,9 @@ var log = new(winston.Logger)({
     ]
 });
 
+// Read in reserved names
+var reservedUsers = fs.readFileSync('reserved-users').toString().split("\n");
+
 // Configure the database.
 db.ensureIndex({
     fieldName: 'email',
@@ -47,12 +50,23 @@ db.ensureIndex({
     }
 });
 
-function valid_username(username) {
+function valid_unix_username(username) {
     var valid_username_re = /^[a-z0-9_-]{3,15}$/;
     var regex = new RegExp(valid_username_re);
 
     return regex.test(username);
 }
+
+
+function non_reserved_username(username) {
+    var valid = true;
+    if (reservedUsers.length > 0 && reservedUsers.indexOf(username) !== -1) {
+        valid = false;
+    }
+
+    return valid;
+}
+
 
 function send_registration_email(user_name, user_email, activation_key) {
     var mail = new Email({
@@ -63,7 +77,6 @@ function send_registration_email(user_name, user_email, activation_key) {
     });
 
     mail.path = '/usr/sbin/sendmail';
-    //mail.send(function(err){console.log(err)});
     mail.send();
 }
 
@@ -73,9 +86,9 @@ function register_account(req, res, next) {
 
     insert_data['username'] = req.body.username;
 
-    if (!valid_username(insert_data['username'])) {
-        log.error("username is not a valid unix username '%s'.", insert_data['username']);
-        return next(new restify.InvalidArgumentError('Your username is not valid. It can only contain ascii characters.'));
+    if (!valid_unix_username(insert_data['username']) || !non_reserved_username(insert_data['username'])) {
+        log.error("username is not a valid username '%s'.", insert_data['username']);
+        return next(new restify.InvalidArgumentError('Your username is not valid. Sorry.'));
     }
 
     insert_data['email'] = req.body.email;
@@ -96,7 +109,6 @@ function register_account(req, res, next) {
 
     pw.generate(options, function(err, result) {
         if (err) {
-            log.error("error generating word based activation key");
             insert_data['activation_key'] = crypto.randomBytes(25).toString('hex');
         } else {
             var words = "";
@@ -108,6 +120,7 @@ function register_account(req, res, next) {
             }
             insert_data['activation_key'] = words;
         }
+
 
         insert_reg_data(res, insert_data);
     });
@@ -135,7 +148,7 @@ function insert_reg_data(res, insert_data) {
             log.info("Account '%s' created.", data.email);
             console.log(insert_data);
             send_registration_email(insert_data['username'], insert_data['email'], insert_data['activation_key'])
-            res.send('Account created. Please check your inbox for the verification email.');
+            res.send('Acount created, check your inbox.');
         }
     });
 
