@@ -135,7 +135,7 @@ function insert_reg_data(res, insert_data) {
             log.info("Account '%s' created.", data.email);
             console.log(insert_data);
             send_registration_email(insert_data['username'], insert_data['email'], insert_data['activation_key'])
-            res.send('Acount created, check your inbox.');
+            res.send('Account created. Please check your inbox for the verification email.');
         }
     });
 
