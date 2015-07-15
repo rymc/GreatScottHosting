@@ -8,7 +8,9 @@ var restify = require('restify'),
     crypto = require('crypto'),
     swot = require('swot-simple'),
     fs = require('fs'),
-    child_process = require('child_process');
+    child_process = require('child_process'),
+    Email = require('email').Email,
+    xkcdPassword = require('xkcd-password');
 
 
 
@@ -52,6 +54,19 @@ function valid_username(username) {
     return regex.test(username);
 }
 
+function send_registration_email(user_name, user_email, activation_key) {
+    var mail = new Email({
+        from: 'charliekelly@matrix.ac',
+        to: user_email,
+        subject: 'Your matrix account',
+        body: 'Hello ' + user_name + '\r\n\r\nPlease confirm that you would like to register for an account at matrix.ac by activating your account with the following words: http://matrix.ac/registration/activate/' + activation_key + '\r\n\r\nIf you did not take any actions that would cause you to receive this email, you can safely ignore it.\r\n\r\nmatrix.ac\r\n\r\nPlease do not reply to this email.',
+    });
+
+    mail.path = '/usr/sbin/sendmail';
+    //mail.send(function(err){console.log(err)});
+    mail.send();
+}
+
 function register_account(req, res, next) {
     // TODO: Maybe should check email exists before doing this, thought its sitll caught by the DBs index.
     var insert_data = {};
@@ -72,9 +87,38 @@ function register_account(req, res, next) {
 
     insert_data['pubkey'] = req.body.pubkey;
 
-    //var d = crypto.createHash('sha1'); // TODO: Make this random.
-    //insert_data['activation_key'] = d.digest('hex');
-    insert_data['activation_key'] = crypto.randomBytes(25).toString('hex');
+    var options = {
+        numWords: 4,
+        minLength: 3,
+        maxLength: 20
+    };
+    var pw = new xkcdPassword();
+
+    pw.generate(options, function(err, result) {
+        if (err) {
+            log.error("error generating word based activation key");
+            insert_data['activation_key'] = crypto.randomBytes(25).toString('hex');
+        } else {
+            var words = "";
+            for (word in result) {
+                if (word > 0)
+                    words += "-" + result[word];
+                else
+                    words += result[word];
+            }
+            insert_data['activation_key'] = words;
+        }
+
+        insert_reg_data(res, insert_data);
+    });
+
+
+    // TODO: Check for public GPG Key
+
+    next();
+}
+
+function insert_reg_data(res, insert_data) {
 
     db.insert(insert_data, function(err, data) {
         if (err && err.errorType == "uniqueViolated") {
@@ -90,14 +134,13 @@ function register_account(req, res, next) {
             res.status(201);
             log.info("Account '%s' created.", data.email);
             console.log(insert_data);
+            send_registration_email(insert_data['username'], insert_data['email'], insert_data['activation_key'])
             res.send('Acount created, check your inbox.');
         }
     });
 
-    // TODO: Check for public GPG Key
-    // TODO: Send verification email
 
-    next();
+
 }
 
 function expire_first_login_passwd(username) {
@@ -223,17 +266,13 @@ function activate_account(req, res, next) {
 
 var server = restify.createServer();
 
-server.get('/activate/:activation_key', activate_account);
-server.head('/activate/:activation_key', activate_account);
+server.get('/registration/activate/:activation_key', activate_account);
+server.head('/registration/activate/:activation_key', activate_account);
 
 server.use(restify.urlEncodedBodyParser({
     mapParams: false
 }));
-server.post('join', register_account);
-
-server.get('html/.*', restify.serveStatic({
-    directory: './static/',
-}));
+server.post('/registration/join', register_account);
 
 server.listen(8080, function() {
     log.info('Server started on %s', server.url);
