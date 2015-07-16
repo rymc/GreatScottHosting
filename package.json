@@ -8,7 +8,8 @@
     "restify": "~2.8.5",
     "swot-simple": "^1.0.0",
     "winston": "^0.9.0",
-    "email": "~0.2.6"
+    "email": "~0.2.6",
+    "xkcd-password": "*"
   },
   "devDependencies": {},
   "scripts": {
