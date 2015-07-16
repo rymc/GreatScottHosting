@@ -292,15 +292,16 @@ var server = restify.createServer();
 server.get('/registration/activate/:activation_key', activate_account);
 server.head('/registration/activate/:activation_key', activate_account);
 
+server.use(restify.urlEncodedBodyParser({
+    mapParams: false
+}));
+
 server.post('/registration/join', register_account);
 
 server.listen(8080, '127.0.0.1', function() {
     log.info('Server started on %s', server.url);
 });
 
-server.use(restify.urlEncodedBodyParser({
-    mapParams: false
-}));
 
 // TODO: Check for public GPG Key
 // TODO: Handle signals.
