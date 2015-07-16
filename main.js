@@ -294,7 +294,7 @@ server.head('/registration/activate/:activation_key', activate_account);
 
 server.post('/registration/join', register_account);
 
-server.listen(8080, function() {
+server.listen(8080, '127.0.0.1', function() {
     log.info('Server started on %s', server.url);
 });
 
