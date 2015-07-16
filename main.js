@@ -12,9 +12,6 @@ var restify = require('restify'),
     Email = require('email').Email,
     xkcdPassword = require('xkcd-password');
 
-
-
-
 // Setup logging.
 var log = new(winston.Logger)({
     transports: [
@@ -138,17 +135,23 @@ function insert_reg_data(res, insert_data) {
             res.status(400);
             log.error(err)
             log.verbose("Attempted to create an existing account.", insert_data);
-            res.send('This email address or username has already been registered.');
+            // res.send('This email address or username has already been registered.');
+            res.header('Location', '/m_taken.html');
+            res.send(302);
         } else if (err) {
             res.status(500);
             log.error("register_account.insert(): ", err);
-            res.send('There has been a problem.');
+            // res.send('There has been a problem.');
+            res.header('Location', '/m_problem.html');
+            res.send(302);
         } else if (!err && data) {
             res.status(201);
             log.info("Account '%s' created.", data.email);
             console.log(insert_data);
             send_registration_email(insert_data['username'], insert_data['email'], insert_data['activation_key'])
-            res.send('Acount created, check your inbox.');
+            // res.send('Acount created, check your inbox.');
+            res.header('Location', '/m_created.html');
+            res.send(302);
         }
     });
 
@@ -235,16 +238,22 @@ function create_user_via_activation(activation_keys_account, res) {
         if (numReplaced != 1) {
             res.status(500);
             log.verbose("Unable to activate account with ID: '%s'.", req.params.activation_key);
-            res.send('Unable to activate account.');
+            // res.send('Unable to activate account.');
+            res.header('Location', '/m_activate_failed.html');
+            res.send(302);
         } else if (err) {
             res.status(500);
             log.error("activate_account.update(): ", err);
-            res.send('Unable to activate account.');
+            // res.send('Unable to activate account.');
+            res.header('Location', '/m_activate_failed.html');
+            res.send(302);
         } else {
             res.status(201);
             log.info('User verified email.');
             create_user(activation_keys_account.username, activation_keys_account.pubkey);
-            res.send('Account activated.');
+            // res.send('Account activated.');
+            res.header('Location', '/m_activated.html');
+            res.send(302);
         }
     });
 }
@@ -259,11 +268,15 @@ function activate_account(req, res, next) {
         if (results.length === 0) {
             res.status(500);
             log.verbose("Unable to activate account with ID: '%s'.", req.params.activation_key);
-            res.send('Unable to activate account.');
+            // res.send('Unable to activate account.');
+            res.header('Location', '/m_activate_failed.html');
+            res.send(302, 'Unable to activate account.');
         } else if (results.length !== 1) {
             log.error("We seem to have found a duplicate activation key");
             res.status(500);
-            res.send('Unable to activate account.');
+            // res.send('Unable to activate account.');
+            res.header('Location', '/m_activate_failed.html');
+            res.send(302);
         } else {
             activation_keys_account = results[0];
             create_user_via_activation(activation_keys_account, res);
@@ -274,34 +287,20 @@ function activate_account(req, res, next) {
     next();
 }
 
-
-
-
 var server = restify.createServer();
 
 server.get('/registration/activate/:activation_key', activate_account);
 server.head('/registration/activate/:activation_key', activate_account);
 
-server.use(restify.urlEncodedBodyParser({
-    mapParams: false
-}));
 server.post('/registration/join', register_account);
 
 server.listen(8080, function() {
     log.info('Server started on %s', server.url);
 });
 
-// Functions to parse-user input.
+server.use(restify.urlEncodedBodyParser({
+    mapParams: false
+}));
 
-// Register an account
-// Check email is free
-// Check for public GPG Key
-// Send verification email
-
-// Account Activation
-// confirm verification ID from email
-// Configure User space
-
-// Add SSH Public Key
-
+// TODO: Check for public GPG Key
 // TODO: Handle signals.
