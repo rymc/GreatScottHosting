@@ -239,7 +239,7 @@ function create_user_via_activation(activation_keys_account, res) {
             res.status(500);
             log.verbose("Unable to activate account with ID: '%s'.", req.params.activation_key);
             // res.send('Unable to activate account.');
-            res.header('Location', '/m_activate_failed.html');
+            res.header('Location', '/');
             res.send(302);
         } else if (err) {
             res.status(500);
@@ -288,6 +288,11 @@ function activate_account(req, res, next) {
 }
 
 var server = restify.createServer();
+
+server.get('/', function(req, res, next) {
+    res.header('Location', '/');
+    res.send(302, 'Nothing to see here');
+});
 
 server.get('/activate/:activation_key', activate_account);
 server.head('/activate/:activation_key', activate_account);
