@@ -26,7 +26,26 @@ var log = new(winston.Logger)({
 });
 
 // Read in reserved names
-var reservedUsers = fs.readFileSync('reserved-users').toString().split("\n");
+var reservedUsers = [];
+try {
+    reservedUsers = fs.readFileSync('reserved-users').toString().split("\n");
+} catch (e) {
+    log.error("Error reading reservered-users file: %j", e)
+}
+
+// Read in email addresses to bcc on registrations
+var bccUserEmails = [];
+try {
+    bccUserEmails = fs.readFileSync('bcc-users').toString().split("\n");
+    // Remove any empty elements
+    bccUserEmails = bccUserEmails.filter(function(e) {
+        return e
+    });
+} catch (e) {
+    log.error("Error reading bcc-users file: %j", e)
+}
+
+log.error(bccUserEmails);
 
 // Configure the database.
 db.ensureIndex({
@@ -64,11 +83,11 @@ function non_reserved_username(username) {
     return valid;
 }
 
-
-function send_registration_email(user_name, user_email, activation_key) {
+function send_registration_email(user_name, user_email, activation_key, bcc_users) {
     var mail = new Email({
         from: 'charliekelly@matrix.ac',
         to: user_email,
+        bcc: bcc_users,
         subject: 'Your matrix account',
         body: 'Hello ' + user_name + '\r\n\r\nPlease confirm that you would like to register for an account at matrix.ac by activating your account with the following words: http://matrix.ac/registration/activate/' + activation_key + '\r\n\r\nIf you did not take any actions that would cause you to receive this email, you can safely ignore it.\r\n\r\nmatrix.ac\r\n\r\nPlease do not reply to this email.',
     });
@@ -159,8 +178,7 @@ function insert_reg_data(res, insert_data) {
             res.status(201);
             log.info("Account '%s' created.", data.email);
             console.log(insert_data);
-            send_registration_email(insert_data['username'], insert_data['email'], insert_data['activation_key'])
-
+            send_registration_email(insert_data['username'], insert_data['email'], insert_data['activation_key'], bccUserEmails)
             res.header('Location', '/m_created.html');
             res.send(302);
             return next();
